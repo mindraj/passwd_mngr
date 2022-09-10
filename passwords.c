@@ -248,7 +248,6 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 		result = flocal_result;
 	}
 
-	puts("ask_info returned");
 	if (evaluation_function == NULL)
 	{
 		return result;
@@ -268,7 +267,6 @@ void append_passwd_file(FILE *passwd_file)
 	for (;;)
 	{
 		identity = ask_info("Identity name? ", "s", 0, NULL);
-		puts("ask_info returned");
 		if (find_passwd(identity, passwd_file) == NULL)
 		{
 			break;
