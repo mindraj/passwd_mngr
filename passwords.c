@@ -35,6 +35,65 @@ char *make_passwd(int passwd_length)
 	#error Not a supported platform.
 #endif
 
+char *find_passwd(char *identity, FILE *passwd_file)
+{
+	char *saved_name = malloc(strlen(identity));
+	char *passwd = malloc(50);
+	
+	// Find
+	for (;;)
+	{
+		int ch;
+		// Clear saved name
+		memset(saved_name, '\0', sizeof(saved_name));
+
+		// Peek to check that next up isn't EOF
+		if ((ch = fgetc(passwd_file)) == EOF)
+		{
+			return NULL;
+		}
+		else
+		{
+			ungetc(ch, passwd_file);
+		}
+
+		// Save the identity name to a string
+		for (int i = 0;; i++)
+		{
+			ch = fgetc(passwd_file);
+			if ((ch == '\t') || (i > sizeof(saved_name)))
+				break;
+
+			saved_name[i] = ch;
+		}
+		
+		// If found matching identity name - break
+		if (strcmp(saved_name, identity) == 0)
+			break;
+
+		// Skip to the next line
+		for (int ch; fgetc(passwd_file) != '\n';) {}
+
+	}
+	free(saved_name);
+
+	// Read password string
+	for (int i = 0, ch; (ch = fgetc(passwd_file)) != '\n'; i++)
+	{
+		if (i == 50)
+			passwd = realloc(passwd, i + 50);
+
+		passwd[i] = ch;
+	}
+	
+	// Very important to rewind, otherwise subsequent operations
+	// with the file will fail.
+	rewind(passwd_file);
+
+	puts("find_passwd returned");
+	return passwd;
+}
+
 void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(void *))
 {
 	/* Generic ask the user function
@@ -65,6 +124,7 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 	 */
 
 	void *result;
+	bool success = false;
 
 	fputs(prompt, stdout);
 	if (strcmp(type, "i") == 0)
@@ -74,7 +134,6 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 
 		result = malloc(sizeof(long int));
 		
-		bool success = false;
 		while (success == false)
 		{
 			int ch;
@@ -117,47 +176,79 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 	}
 	else if (strcmp(type, "s") == 0) 
 	{
+		// Declare pointer to string local to the function
+		// and allocate memory. That is needed because
+		// the result variable is a void pointer 
+		// and you can't perform the usual array subscripting on them.
+
 		char *flocal_result = malloc(50);
 		int ch;
 
-		for (int i = 0;; i++)
+		// Collect characters until
+		// success flag is set to true
+		for (int i = 0; success == false; i++)
 		{
+			// If not enough allocated memory, realloc more
 			if (i == 50)
 				flocal_result = realloc(result, i + 50);
 
+			// Get character
 			ch = getchar();
+
+			// If reached newline or EOF
+			// set success to true, exit the for loop
 			if (ch == '\n' || ch == EOF)
 			{
+				// Append newline at the end because C strings
 				flocal_result[i] = '\0';
-				break;
+				success = true;
 			}
+			// If '\' appears, check
+			// it isn't part of "\q" quit expression
 			else if (ch == '\\')
 			{
 				flocal_result[i] = ch;
 				ch = getchar();
+				// If it is, quit
 				if (ch == 'q')
 					exit(EXIT_SUCCESS);
 				else if (ch == '\n' || ch == EOF)
-					break;
+					// If it's EOF or newline, end the loop
+					success = true;
 				else
+					// If it isn't sotre and coninue
 					flocal_result[++i] = ch;
+			}
+			// So tabs are used as the delimeter in the .passwd file
+			// hence they're prohibited in user input.
+			// Displays a warning and asks again using recursion
+			else if (ch == '\t')
+			{
+				puts("Tabs are not permitted in the identifiers");
+				clear_input_buffer;
+				flocal_result = ask_info(prompt, type, length, evaluation_function);
+				success = true;
 			}
 			else
 			{
 				flocal_result[i] = ch;
 			}
 
+			// Do something with length argument or nothing if it's 0
 			if (length == 0)
 				;
 			else 
 			{
 				if (i == length)
-					break;
+					success = true;
 			}
 		}
+		// Store result local to the function to 
+		// result that will be returned. (to a void pointer)
 		result = flocal_result;
 	}
 
+	puts("ask_info returned");
 	if (evaluation_function == NULL)
 	{
 		return result;
@@ -166,105 +257,18 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 		return (evaluation_function(result) == 0 ? NULL : result);
 }
 
-
-
-char *find_passwd(char *identity, FILE *passwd_file)
-{
-	char *saved_name = malloc(strlen(identity));
-	memset(saved_name, '\0', strlen(identity));
-
-	char *passwd = malloc(50);
-	
-	// Find
-	for (;;)
-	{
-		int ch;
-		memset(saved_name, '\0', strlen(saved_name)); /* clear saved_name */
-
-		// Peek to check that next up isn't EOF
-		if ((ch = fgetc(passwd_file)) == EOF)
-		{
-			return NULL;
-		}
-		else
-		{
-			ungetc(ch, passwd_file);
-		}
-
-		// Save the identity name to a string
-		for (int i = 0;; i++)
-		{
-			ch = fgetc(passwd_file);
-			if ((ch == '\t') || (i > strlen(saved_name)))
-				break;
-
-			saved_name[i] = ch;
-		}
-		
-		// If found matching identity name - break
-		if (strcmp(saved_name, identity) == 0)
-			break;
-
-		// Skip to the next line
-		for (int ch; fgetc(passwd_file) != '\n';) {}
-
-	}
-
-	// Read password string
-	for (int i = 0, ch; (ch = fgetc(passwd_file)) != '\n'; i++)
-	{
-		if (i == 50)
-			passwd = realloc(passwd, i + 50);
-
-		passwd[i] = ch;
-	}
-	
-	// Very important to rewind, otherwise subsequent operations
-	// with the file will fail.
-	rewind(passwd_file);
-
-	return passwd;
-}
-
- char *get_identity_name(void)
- {
- 	char *identity = malloc(100);
- 	for (bool success = false; success == false;)
- 	{
- 		fputs("Identity name? ", stdout);
- 		success = true;
- 		for (int ch, i = 0; (ch = getchar()) != '\n'; i++)
- 		{
- 			if (i == 100)
- 				identity = realloc(identity, i + 100);
- 
- 			if (ch == '\t')
- 			{
- 				puts("Tabs are not permitted in identity names!");
- 				success = false;
- 				break;
- 			}
- 			else 
- 			{
- 				identity[i] = (char) ch;
- 			}
- 		}
- 	}
- 
- 	return identity;
- }
-
 void append_passwd_file(FILE *passwd_file)
 {
 
 	// Declare variables
 	long int *passwd_length;
-	char *identity;
+	static char *identity;
 	
 	// Get identity name
 	for (;;)
 	{
 		identity = ask_info("Identity name? ", "s", 0, NULL);
+		puts("ask_info returned");
 		if (find_passwd(identity, passwd_file) == NULL)
 		{
 			break;
@@ -322,13 +326,9 @@ int main(void)
 	bool success = false;
 
 	// Ask service
-	char service[200];
+	char *service;
 service_query_loop_start:
-	fputs("What service? (\\q to quit) ", stdout);
-	fgets(service, 200, stdin);
-	strip_trailing_nl(service);
-	if (strcmp("\\q", service) == 0)
-		exit(EXIT_SUCCESS);
+	service = ask_info("What service? ", "s", 0, NULL);
 
 	// Make filename
 	char *passwd_file_name = malloc(strlen(service) + strlen(".passwd"));
