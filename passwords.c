@@ -261,7 +261,7 @@ void append_passwd_file(FILE *passwd_file)
 
 	// Declare variables
 	long int *passwd_length;
-	static char *identity;
+	char *identity;
 	
 	// Get identity name
 	for (;;)
@@ -325,11 +325,10 @@ int main(void)
 
 	// Ask service
 	char *service;
-service_query_loop_start:
 	service = ask_info("What service? ", "s", 0, NULL);
 
 	// Make filename
-	char *passwd_file_name = malloc(strlen(service) + strlen(".passwd"));
+	char *passwd_file_name = malloc(strlen(service) + strlen(".passwd\0"));
 	sprintf(passwd_file_name, "%s.passwd", service);	
 
 	// Scan folder for passwd files
@@ -355,22 +354,23 @@ service_query_loop_start:
 
 		if (!found_passwd)
 		{
+
+			char answer[5];
+				
 			for (;;)
 			{
-				fprintf(stderr,
-						"Service %s not found. Add it? (yes/no) ",
+				printf("Service %s not found. Add it? (yes/no) ",
 						service);
 
-				char answer[5];
 				fgets(answer, 5, stdin);
 				strip_trailing_nl(answer);
 
-				if (strcmp(answer, "yes") == 0)
-					break;
-				else if (strcmp(answer, "no") == 0)
-					goto service_query_loop_start;
-				else if (strcmp(answer, "\\q") == 0)
+				if (strcmp(answer, "no") == 0 || strcmp(answer, "\\q") == 0)
 					exit(EXIT_SUCCESS);
+				else if (strcmp(answer, "yes") == 0)
+					break;
+				else
+					;
 			}
 		}
 	}
