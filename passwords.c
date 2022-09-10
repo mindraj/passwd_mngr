@@ -115,10 +115,53 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 
 		*(long int *) result = atoi(number_string);
 	}
-	else if (strcmp(type, "s") == 0) {}
+	else if (strcmp(type, "s") == 0) 
+	{
+		char *flocal_result = malloc(50);
+		int ch;
+
+		for (int i = 0;; i++)
+		{
+			if (i == 50)
+				flocal_result = realloc(result, i + 50);
+
+			ch = getchar();
+			if (ch == '\n' || ch == EOF)
+			{
+				flocal_result[i] = '\0';
+				break;
+			}
+			else if (ch == '\\')
+			{
+				flocal_result[i] = ch;
+				ch = getchar();
+				if (ch == 'q')
+					exit(EXIT_SUCCESS);
+				else if (ch == '\n' || ch == EOF)
+					break;
+				else
+					flocal_result[++i] = ch;
+			}
+			else
+			{
+				flocal_result[i] = ch;
+			}
+
+			if (length == 0)
+				;
+			else 
+			{
+				if (i == length)
+					break;
+			}
+		}
+		result = flocal_result;
+	}
 
 	if (evaluation_function == NULL)
+	{
 		return result;
+	}
 	else 
 		return (evaluation_function(result) == 0 ? NULL : result);
 }
@@ -127,7 +170,7 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 
 char *find_passwd(char *identity, FILE *passwd_file)
 {
-	char saved_name[strlen(identity)];
+	char *saved_name = malloc(strlen(identity));
 	memset(saved_name, '\0', strlen(identity));
 
 	char *passwd = malloc(50);
@@ -149,8 +192,12 @@ char *find_passwd(char *identity, FILE *passwd_file)
 		}
 
 		// Save the identity name to a string
-		for (int i = 0; (ch = fgetc(passwd_file)) != '\t';i++)
+		for (int i = 0;; i++)
 		{
+			ch = fgetc(passwd_file);
+			if ((ch == '\t') || (i > strlen(saved_name)))
+				break;
+
 			saved_name[i] = ch;
 		}
 		
@@ -179,33 +226,33 @@ char *find_passwd(char *identity, FILE *passwd_file)
 	return passwd;
 }
 
-char *get_identity_name(void)
-{
-	char *identity = malloc(100);
-	for (bool success = false; success == false;)
-	{
-		fputs("Identity name? ", stdout);
-		success = true;
-		for (int ch, i = 0; (ch = getchar()) != '\n'; i++)
-		{
-			if (i == 100)
-				identity = realloc(identity, i + 100);
-
-			if (ch == '\t')
-			{
-				puts("Tabs are not permitted in identity names!");
-				success = false;
-				break;
-			}
-			else 
-			{
-				identity[i] = (char) ch;
-			}
-		}
-	}
-
-	return identity;
-}
+ char *get_identity_name(void)
+ {
+ 	char *identity = malloc(100);
+ 	for (bool success = false; success == false;)
+ 	{
+ 		fputs("Identity name? ", stdout);
+ 		success = true;
+ 		for (int ch, i = 0; (ch = getchar()) != '\n'; i++)
+ 		{
+ 			if (i == 100)
+ 				identity = realloc(identity, i + 100);
+ 
+ 			if (ch == '\t')
+ 			{
+ 				puts("Tabs are not permitted in identity names!");
+ 				success = false;
+ 				break;
+ 			}
+ 			else 
+ 			{
+ 				identity[i] = (char) ch;
+ 			}
+ 		}
+ 	}
+ 
+ 	return identity;
+ }
 
 void append_passwd_file(FILE *passwd_file)
 {
@@ -217,8 +264,7 @@ void append_passwd_file(FILE *passwd_file)
 	// Get identity name
 	for (;;)
 	{
-		identity = get_identity_name();
-		puts(identity);
+		identity = ask_info("Identity name? ", "s", 0, NULL);
 		if (find_passwd(identity, passwd_file) == NULL)
 		{
 			break;
@@ -250,7 +296,7 @@ void query_passwd_file(FILE *passwd_file)
 {
 	
 	// Get identity name
-	char *identity = get_identity_name();
+	char *identity = ask_info("Identity name? ", "s", 0, NULL);
 
 	// Find password or fail
 	char *passwd = find_passwd(identity, passwd_file);
