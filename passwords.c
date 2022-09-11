@@ -334,66 +334,67 @@ int main(void)
 
 	// Scan folder for passwd files
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__)
+
+	DIR *program_directory;
+	struct dirent *dirfile;
+	bool found_passwd = false;
+
+	program_directory = opendir("./");
+
+	while ((dirfile = readdir(program_directory)) != NULL)
 	{
-		DIR *program_directory;
-		struct dirent *dirfile;
-		bool found_passwd = false;
-
-		program_directory = opendir("./");
-
-		while ((dirfile = readdir(program_directory)) != NULL)
+		if (strcmp(dirfile->d_name, passwd_file_name) == 0)
 		{
-			if (strcmp(dirfile->d_name, passwd_file_name) == 0)
-			{
-				found_passwd = true;
-				break;
-			}
-		}
-#else
-	#error Not a supported platform.
-#endif
-
-		if (!found_passwd)
-		{
-
-			char answer[5];
-				
-			for (;;)
-			{
-				printf("Service %s not found. Add it? (yes/no) ",
-						service);
-
-				fgets(answer, 5, stdin);
-				strip_trailing_nl(answer);
-
-				if (strcmp(answer, "no") == 0 || strcmp(answer, "\\q") == 0)
-					exit(EXIT_SUCCESS);
-				else if (strcmp(answer, "yes") == 0)
-					break;
-				else
-					;
-			}
-			append_passwd_file(fopen(passwd_file_name, "a+"));
+			found_passwd = true;
+			break;
 		}
 	}
+#else
+#error Not a supported platform.
+#endif
 
-	// Ask operation
-	char *operation;
-	for (bool success = false; success == false;)
+	if (!found_passwd)
 	{
-		operation = ask_info("(r)ead or (w)rite? ", "s", 10, NULL);
-		success = true;
-		
-		if((strcmp(operation, "r") == 0) || (strcmp(operation, "read") == 0))
-			query_passwd_file(fopen(passwd_file_name, "r"));
-		else if((strcmp(operation, "w") == 0) || (strcmp(operation, "write") == 0))
-			append_passwd_file(fopen(passwd_file_name, "a+"));
-		else if(strcmp(operation, "\\q") == 0)
-			exit(EXIT_SUCCESS);
-		else
+
+		char answer[5];
+			
+		for (;;)
 		{
-			puts("Not a valid operation");
-			success = false;
+			printf("Service %s not found. Add it? (yes/no) ",
+					service);
+
+			fgets(answer, 5, stdin);
+			strip_trailing_nl(answer);
+
+			if (strcmp(answer, "no") == 0 || strcmp(answer, "\\q") == 0)
+				exit(EXIT_SUCCESS);
+			else if (strcmp(answer, "yes") == 0)
+				break;
+			else
+				;
+		}
+		append_passwd_file(fopen(passwd_file_name, "a+"));
+	}
+	else
+	{
+		// Ask operation
+		char *operation;
+		for (bool success = false; success == false;)
+		{
+			operation = ask_info("(r)ead or (w)rite? ", "s", 10, NULL);
+			success = true;
+			
+			if((strcmp(operation, "r") == 0) || (strcmp(operation, "read") == 0))
+				query_passwd_file(fopen(passwd_file_name, "r"));
+			else if((strcmp(operation, "w") == 0) || (strcmp(operation, "write") == 0))
+				append_passwd_file(fopen(passwd_file_name, "a+"));
+			else if(strcmp(operation, "\\q") == 0)
+				exit(EXIT_SUCCESS);
+			else
+			{
+				puts("Not a valid operation");
+				success = false;
+			}
 		}
 	}
 }
