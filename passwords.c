@@ -322,6 +322,7 @@ int main(void)
 			"Enter \\q to any prompt to quit\n");
 
 	bool success = false;
+	bool creating_new = false;
 
 	// Ask service
 	char *service;
@@ -372,18 +373,17 @@ int main(void)
 				else
 					;
 			}
+			append_passwd_file(fopen(passwd_file_name, "a+"));
 		}
 	}
 
 	// Ask operation
-	char operation[10];
+	char *operation;
 	for (bool success = false; success == false;)
 	{
+		operation = ask_info("(r)ead or (w)rite? ", "s", 10, NULL);
 		success = true;
-		fputs("(r)ead or (w)rite? ", stdout);
-		fgets(operation, 6, stdin);
-		strip_trailing_nl(operation);
-
+		
 		if((strcmp(operation, "r") == 0) || (strcmp(operation, "read") == 0))
 			query_passwd_file(fopen(passwd_file_name, "r"));
 		else if((strcmp(operation, "w") == 0) || (strcmp(operation, "write") == 0))
@@ -395,6 +395,5 @@ int main(void)
 			puts("Not a valid operation");
 			success = false;
 		}
-		clear_input_buffer;
 	}
 }
