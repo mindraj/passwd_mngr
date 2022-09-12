@@ -7,8 +7,8 @@
 #include <stdbool.h>
 
 #define strip_trailing_nl(string) string[strlen(string) - 1] = '\0'
-#define clear_input_buffer                                                \
-		{                                                         \
+#define clear_input_buffer                                    \
+		{                                                     \
 			int cs;                                           \
 			while ((cs = getchar()) != '\n' && cs != EOF) {}  \
 		} 
