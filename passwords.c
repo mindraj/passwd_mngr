@@ -7,8 +7,8 @@
 #include <stdbool.h>
 
 #define strip_trailing_nl(string) string[strlen(string) - 1] = '\0'
-#define clear_input_buffer                                                \
-		{                                                         \
+#define clear_input_buffer                                    \
+		{                                                     \
 			int cs;                                           \
 			while ((cs = getchar()) != '\n' && cs != EOF) {}  \
 		} 
@@ -45,7 +45,7 @@ char *find_passwd(char *identity, FILE *passwd_file)
 	{
 		int ch;
 		// Clear saved name
-		memset(saved_name, '\0', sizeof(saved_name));
+		memset(saved_name, '\0', strlen(identity));
 
 		// Peek to check that next up isn't EOF
 		if ((ch = fgetc(passwd_file)) == EOF)
@@ -72,7 +72,7 @@ char *find_passwd(char *identity, FILE *passwd_file)
 			break;
 
 		// Skip to the next line
-		for (int ch; fgetc(passwd_file) != '\n';) {}
+		while (fgetc(passwd_file) != '\n') {}
 
 	}
 	free(saved_name);
@@ -190,7 +190,7 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 		{
 			// If not enough allocated memory, realloc more
 			if (i == 50)
-				flocal_result = realloc(result, i + 50);
+				flocal_result = realloc(flocal_result, i + 50);
 
 			// Get character
 			ch = getchar();
@@ -233,25 +233,22 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 			{
 				flocal_result[i] = ch;
 			}
-
-			// Do something with length argument or nothing if it's 0
-			if (length == 0)
-				;
-			else 
-			{
-				if (i == length)
-					success = true;
-			}
 		}
-		// Store result local to the function to 
-		// result that will be returned. (to a void pointer)
-		result = flocal_result;
+
+		if (length == 0)
+		{
+			result = flocal_result;
+		}
+		else
+		{
+			result = malloc(length);
+			strncpy(result, flocal_result, length);
+			free(flocal_result);
+		}
 	}
 
 	if (evaluation_function == NULL)
-	{
 		return result;
-	}
 	else 
 		return (evaluation_function(result) == 0 ? NULL : result);
 }
@@ -321,9 +318,6 @@ int main(void)
 	puts("Welcome to Mindraj's Password Management Wizzard (MiPMM)!\n"
 			"Enter \\q to any prompt to quit\n");
 
-	bool success = false;
-	bool creating_new = false;
-
 	// Ask service
 	char *service;
 	service = ask_info("What service? ", "s", 0, NULL);
@@ -356,17 +350,19 @@ int main(void)
 	if (!found_passwd)
 	{
 
-		char answer[5];
+		char *prompt = 
+			malloc(strlen("Service x not found. Add it? (yes/no) ") + strlen(service));
+
+		sprintf(prompt, "Service %s not found. Add it? (yes/no) ",
+				service);
+
+		char *answer;
 			
 		for (;;)
 		{
-			printf("Service %s not found. Add it? (yes/no) ",
-					service);
+			answer = ask_info(prompt, "s", 5, NULL);
 
-			fgets(answer, 5, stdin);
-			strip_trailing_nl(answer);
-
-			if (strcmp(answer, "no") == 0 || strcmp(answer, "\\q") == 0)
+			if (strcmp(answer, "no") == 0)
 				exit(EXIT_SUCCESS);
 			else if (strcmp(answer, "yes") == 0)
 				break;
