@@ -52,8 +52,6 @@ void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char
 	unsigned char output_buffer[2048 + crypto_secretstream_xchacha20poly1305_ABYTES];
 
 	// Get name of temporary filename and open it as a string
-	//	char tmp_enc_filename[] = "enc_passwd.tmpXXXXXX"
-	//	int tmp_enc_fd = mkstemp(tmp_enc_filename);
 	FILE *tmp_enc_file = tmpfile();
 	if (tmp_enc_file == NULL)
 	{
@@ -66,7 +64,6 @@ void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char
 	fwrite(header, 1, sizeof(header), tmp_enc_file);
 
 	int num_read;
-	// int output_length;
 	unsigned char tag = 0;
 	for (bool success = false; success == false;)
 	{
