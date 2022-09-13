@@ -318,7 +318,7 @@ int main(void)
 		puts("Initializing sodium failed!");
 		exit(EXIT_FAILURE);
 	}
-	unsigned char *key = get_enc_key;
+	unsigned char *key = get_enc_key();
 
 	// Ask service
 	char *service;
@@ -387,9 +387,7 @@ int main(void)
 			else if(strcmp(operation, "\\q") == 0)
 				exit(EXIT_SUCCESS);
 			else if(strcmp(operation, "e") == 0)
-				encrypt_passwd_file(fopen(passwd_file_name, "rb"), passwd_file_name);
-			else if(strcmp(operation, "d") == 0)
-				decrypt_passwd_file(fopen(passwd_file_name, "rb"), passwd_file_name);
+				encrypt_passwd_file(fopen(passwd_file_name, "wb+"), passwd_file_name, key);
 			else
 			{
 				puts("Not a valid operation");

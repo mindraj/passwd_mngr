@@ -18,3 +18,4 @@
 
 extern void *ask_info (char *prompt, char *type, int length, int (*evaluation_function)(void *));
 unsigned char *get_enc_key(void);
+void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char *key);
