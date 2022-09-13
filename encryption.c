@@ -36,6 +36,7 @@ unsigned char *get_enc_key(void)
 		puts("Key derivation failed");
 		exit(EXIT_FAILURE);
 	}
+	sodium_memzero(password, strlen(password));
 	free(password);
 
 	return key;
@@ -43,9 +44,10 @@ unsigned char *get_enc_key(void)
 
 void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char *key)
 {
+	puts("Starting encryption");
 	// Preparations
 	crypto_secretstream_xchacha20poly1305_state state;
-	unsigned char  header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
+	unsigned char header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
 	unsigned char input_buffer[2048];
 	unsigned char output_buffer[2048 + crypto_secretstream_xchacha20poly1305_ABYTES];
 
@@ -53,6 +55,11 @@ void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char
 	//	char tmp_enc_filename[] = "enc_passwd.tmpXXXXXX"
 	//	int tmp_enc_fd = mkstemp(tmp_enc_filename);
 	FILE *tmp_enc_file = tmpfile();
+	if (tmp_enc_file == NULL)
+	{
+		puts("Failed to create a temporary encrypted file");
+		exit(EXIT_FAILURE);
+	}
 
 	// Write the header
 	crypto_secretstream_xchacha20poly1305_init_push(&state, header, key);
@@ -63,11 +70,13 @@ void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char
 	unsigned char tag = 0;
 	for (bool success = false; success == false;)
 	{
+		puts("Started the encryption loop");
 		num_read = fread(input_buffer, 1, sizeof(input_buffer), passwd_file);
 		if (feof(passwd_file) != 0)
 		{
 			tag = crypto_secretstream_xchacha20poly1305_TAG_FINAL;
 			success = true;
+			puts("EOF");
 		}
 
 		crypto_secretstream_xchacha20poly1305_push
@@ -78,18 +87,17 @@ void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char
 				(num_read + crypto_secretstream_xchacha20poly1305_ABYTES), 
 				tmp_enc_file);
 	}
+	puts("Exited the encryption loop");
 
 	// Write the ciphertext from temporary location to passwd file
 	rewind(tmp_enc_file);
 	rewind(passwd_file);
-	while (feof(passwd_file) == 0)
+
+	while (!feof(tmp_enc_file))
 	{
 		num_read = fread(input_buffer, 1, sizeof(input_buffer), tmp_enc_file);
 		fwrite(input_buffer, 1, num_read, passwd_file);
 	}
+
 }
 	
-
-
-
-

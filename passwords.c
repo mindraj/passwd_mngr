@@ -319,6 +319,7 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 	unsigned char *key = get_enc_key();
+	puts("Got an encryption key");
 
 	// Ask service
 	char *service;
@@ -387,7 +388,7 @@ int main(void)
 			else if(strcmp(operation, "\\q") == 0)
 				exit(EXIT_SUCCESS);
 			else if(strcmp(operation, "e") == 0)
-				encrypt_passwd_file(fopen(passwd_file_name, "wb+"), passwd_file_name, key);
+				encrypt_passwd_file(fopen(passwd_file_name, "rb+"), passwd_file_name, key);
 			else
 			{
 				puts("Not a valid operation");
