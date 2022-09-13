@@ -1,4 +1,4 @@
-#include "passwd_mngr.h"
+#include "passwords.h"
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__)
 char *make_passwd(int passwd_length)
@@ -311,6 +311,14 @@ int main(void)
 
 	bool success = false;
 	bool creating_new = false;
+
+	// Init libosodium or fail
+	if (sodium_init() < 0) 
+	{
+		puts("Initializing sodium failed!");
+		exit(EXIT_FAILURE);
+	}
+	unsigned char *key = get_enc_key;
 
 	// Ask service
 	char *service;
