@@ -1,19 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-#include <sys/types.h>
-#include <dirent.h>
-#include <stdbool.h>
-#include <sodium.h>
-#include <unistd.h>
-
-#define strip_trailing_nl(string) string[strlen(string) - 1] = '\0'
-#define clear_input_buffer                                    \
-		{                                                     \
-			int cs;                                           \
-			while ((cs = getchar()) != '\n' && cs != EOF) {}  \
-		} 
+#include "passwd_mngr.h"
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__)
 char *make_passwd(int passwd_length)
@@ -47,7 +32,7 @@ char *find_passwd(char *identity, FILE *passwd_file)
 	{
 		int ch;
 		// Clear saved name
-		memset(saved_name, '\0', sizeof(saved_name));
+		memset(saved_name, '\0', strlen(identity));
 
 		// Peek to check that next up isn't EOF
 		if ((ch = fgetc(passwd_file)) == EOF)
@@ -63,7 +48,7 @@ char *find_passwd(char *identity, FILE *passwd_file)
 		for (int i = 0;; i++)
 		{
 			ch = fgetc(passwd_file);
-			if ((ch == '\t') || (i > sizeof(saved_name)))
+			if ((ch == '\t') || (i > strlen(identity)))
 				break;
 
 			saved_name[i] = ch;
@@ -74,7 +59,7 @@ char *find_passwd(char *identity, FILE *passwd_file)
 			break;
 
 		// Skip to the next line
-		for (int ch; fgetc(passwd_file) != '\n';) {}
+		while (fgetc(passwd_file) != '\n') {}
 
 	}
 	free(saved_name);
@@ -192,7 +177,7 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 		{
 			// If not enough allocated memory, realloc more
 			if (i == 50)
-				flocal_result = realloc(result, i + 50);
+				flocal_result = realloc(flocal_result, i + 50);
 
 			// Get character
 			ch = getchar();
@@ -256,54 +241,6 @@ void *ask_info(char *prompt, char *type, int length, int (*evaluation_function)(
 	}
 	else 
 		return (evaluation_function(result) == 0 ? NULL : result);
-}
-
-int encrypt_passwd_file(FILE * input_file, char *passwd_filename)
-{
-
-	// Values libsodium needs and temp file
-	// to store encrypted file before overwriting cleartext
-	crypto_secretstream_xchacha20poly1305_state state;
-    unsigned char  header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
-	unsigned char  input_buf[2048];
-    unsigned char  output_buf[2048 + crypto_secretstream_xchacha20poly1305_ABYTES];
-
-	FILE *temp_enc_pfile = tmpfile();
-	FILE *enc_pfile;
-
-	// Make temporary encrypted file
-	char tmp_filename[] = "encrypted_passwd.tmpXXXXXX";
-	temp_enc_pfile = fdopen(mkstemp(tmp_filename), "wb");
-	
-	// Obtain key from user
-	char *key = ask_info("Input password: ", "s", 0, NULL);
-
-	// Initialize libsodium
-	crypto_secretstream_xchacha20poly1305_init_push(&state, header, key);
-	//free(key);
-	printf("%s\n", header);
-	fwrite(header, 1, sizeof(header), temp_enc_pfile);
-
-	// Encrypt passwd file and store the encrypted file in temporary location
-	int num_read;
-	for (bool success = false; success == false;)
-	{
-		if ((num_read = fread(input_buf, 1, sizeof(input_buf), input_file)) != sizeof(input_buf))
-			success = true;
-
-		 crypto_secretstream_xchacha20poly1305_push
-			 (&state, output_buf, NULL, input_buf, num_read, NULL, 0, 0);
-
-		 fwrite(output_buf, 1, num_read, temp_enc_pfile);
-	}
-	
-	// Delete the original, unecrypted passwd file
-	unlink(passwd_filename);
-
-	// Rename temporary file to become the new encrypted passwd file
-	rename(tmp_filename, passwd_filename);
-
-	return 0;
 }
 
 
@@ -443,6 +380,8 @@ int main(void)
 				exit(EXIT_SUCCESS);
 			else if(strcmp(operation, "e") == 0)
 				encrypt_passwd_file(fopen(passwd_file_name, "rb"), passwd_file_name);
+			else if(strcmp(operation, "d") == 0)
+				decrypt_passwd_file(fopen(passwd_file_name, "rb"), passwd_file_name);
 			else
 			{
 				puts("Not a valid operation");
@@ -451,3 +390,4 @@ int main(void)
 		}
 	}
 }
+
