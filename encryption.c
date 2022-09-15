@@ -1,5 +1,4 @@
 #include "passwords.h"
-#define PASSWORD "mindraj is good boi"
 
 unsigned char *get_enc_key(void)
 {
@@ -97,4 +96,75 @@ void encrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char
 	}
 
 }
+
+FILE *decrypt_passwd_file(FILE *passwd_file, char *passwd_filename, unsigned char *key)
+{
+	puts("Starting decryption");
+	// Preparations
+	crypto_secretstream_xchacha20poly1305_state state;
+	unsigned char header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
+	unsigned char input_buffer[2048 + crypto_secretstream_xchacha20poly1305_ABYTES];
+	unsigned char output_buffer[2048];
 	
+	FILE *tmp_dec_file = tmpfile();
+	if (tmp_dec_file == NULL)
+	{
+		puts("Failed to create a temporary decrypted file");
+		exit(EXIT_FAILURE);
+	}
+
+	// Read header
+	fread(header, 1, sizeof(header), passwd_file);
+	if (crypto_secretstream_xchacha20poly1305_init_pull(&state, header, key) != 0)
+	{
+		puts("Invalide header");
+		exit(EXIT_FAILURE);
+	}
+
+	// Reading loop
+	int num_read;
+	unsigned char tag = 0;
+	for (bool success = false; success == false;)
+	{
+		num_read = fread(input_buffer, 1, sizeof(input_buffer), passwd_file);
+		if (feof(passwd_file) != 0)
+		{
+			success = true;
+			puts("EOF");
+		}
+		
+		if (crypto_secretstream_xchacha20poly1305_pull
+				(&state, output_buffer, NULL, &tag,
+				 input_buffer, num_read, NULL, 0) != 0)
+		{
+			puts("Invalid ciphertext");
+			exit(EXIT_FAILURE);
+		}
+
+		if ((tag == crypto_secretstream_xchacha20poly1305_TAG_FINAL) && (success != true))
+		{
+			puts("Premature file end");
+			exit(EXIT_FAILURE);
+		}
+
+		fwrite(output_buffer, 1, 
+				(num_read - crypto_secretstream_xchacha20poly1305_ABYTES), tmp_dec_file);
+		fwrite(output_buffer, 1, 
+				(num_read - crypto_secretstream_xchacha20poly1305_ABYTES), stdout);
+	}
+	rewind(tmp_dec_file);
+	unlink(passwd_filename);
+	passwd_file = fopen(passwd_filename, "w");
+
+	while (!feof(tmp_dec_file))
+	{
+		puts("writing");
+		num_read = fread(input_buffer, 1, sizeof(input_buffer), tmp_dec_file);
+		fwrite(input_buffer, 1, num_read, passwd_file);
+	}
+
+	return tmp_dec_file;
+}
+
+
+

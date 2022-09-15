@@ -389,6 +389,8 @@ int main(void)
 				exit(EXIT_SUCCESS);
 			else if(strcmp(operation, "e") == 0)
 				encrypt_passwd_file(fopen(passwd_file_name, "rb+"), passwd_file_name, key);
+			else if(strcmp(operation, "d") == 0)
+				decrypt_passwd_file(fopen(passwd_file_name, "rb+"), passwd_file_name, key);
 			else
 			{
 				puts("Not a valid operation");
