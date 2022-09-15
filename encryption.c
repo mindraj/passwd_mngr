@@ -3,7 +3,9 @@
 unsigned char *get_enc_key(void)
 {
 	static unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES];
-	char *password = ask_info("Input password: ", "s", 0, NULL);
+	char *password = getpass("Input password: ");
+	if (strcmp(password, "\\q") == 0)
+		exit(EXIT_SUCCESS);
 
 	// Make salt
 	unsigned char salt[crypto_pwhash_SALTBYTES];
